@@ -442,3 +442,52 @@ def draw_result(screen: pygame.Surface, winner: str) -> None:
                              SCREEN_HEIGHT // 2 - 50))
         screen.blit(sub,   (SCREEN_WIDTH // 2 - sub.get_width()   // 2,
                              SCREEN_HEIGHT // 2 + 20))
+
+
+def draw_pause_menu(screen: pygame.Surface) -> None:
+    # Overlay for pause state with controls
+    overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+    overlay.fill((0, 0, 0, 200))     # Dark translucent overlay
+    screen.blit(overlay, (0, 0))
+
+    if _font_big and _font_med and _font_small:
+        title = _font_big.render("PAUSED", True, COLOR_UI_TEXT)
+        screen.blit(title, (SCREEN_WIDTH // 2 - title.get_width() // 2, 100))
+
+        # P1 Controls
+        p1_title = _font_med.render("PLAYER 1 CONTROLS", True, COLOR_PLAYER)
+        screen.blit(p1_title, (SCREEN_WIDTH // 4 - p1_title.get_width() // 2, 200))
+        
+        p1_lines = [
+            "Movement: W, A, S, D",
+            "Jump: W / Space",
+            "Light Attack: LMB / Q",
+            "Heavy Attack: RMB / E",
+            "Parry: F",
+            "Special: W + RMB"
+        ]
+        
+        for i, line in enumerate(p1_lines):
+            txt = _font_small.render(line, True, COLOR_UI_TEXT)
+            screen.blit(txt, (SCREEN_WIDTH // 4 - 80, 250 + i * 30))
+
+        # P2 Controls
+        p2_title = _font_med.render("PLAYER 2 CONTROLS", True, COLOR_ENEMY)
+        screen.blit(p2_title, (3 * SCREEN_WIDTH // 4 - p2_title.get_width() // 2, 200))
+        
+        p2_lines = [
+            "Movement: Arrow Keys",
+            "Jump: Up Arrow",
+            "Light Attack: Numpad 1",
+            "Heavy Attack: Numpad 2",
+            "Parry: Numpad 0",
+            "Special: Up + Numpad 2"
+        ]
+        
+        for i, line in enumerate(p2_lines):
+            txt = _font_small.render(line, True, COLOR_UI_TEXT)
+            screen.blit(txt, (3 * SCREEN_WIDTH // 4 - 80, 250 + i * 30))
+
+        sub = _font_med.render("Press ESC to resume  |  Press R to return to lobby", True, (150, 150, 150))
+        screen.blit(sub, (SCREEN_WIDTH // 2 - sub.get_width() // 2, SCREEN_HEIGHT - 100))
+

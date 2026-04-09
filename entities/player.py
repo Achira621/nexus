@@ -20,6 +20,7 @@ S_ATTACK    = "attack"
 S_RECOVERY  = "recovery"
 S_HIT       = "hit"
 S_DEAD      = "dead"
+S_PARRY     = "parry"
 
 
 class Player:   # Human-controlled fighter entity
@@ -43,9 +44,11 @@ class Player:   # Human-controlled fighter entity
         self.max_energy     = 100.0
         self.speed_mult     = config["speed_mult"] if config else 1.0
         self.moveset        = config["attacks"] if config else None
+        self.parry_config   = config.get("parry", None)
         
         self.state          = S_IDLE
         self.current_attack = None    # Active Attack object or None
+        self.parry_frame    = 0       # Frame counter within current parry
         self.attack_frame   = 0       # Frame counter within current attack
         self.has_hit        = False   # Prevents multi-hit per swing
         self.hit_stun_timer = 0       # Frames remaining in stun
@@ -81,6 +84,8 @@ class Player:   # Human-controlled fighter entity
 
         if self.state == S_HIT:    # Control locked during stun
             self._update_stun()
+        elif self.state == S_PARRY: # Parrying logic
+            self._update_parry(inp)
         elif self.state in (S_ATTACK, S_RECOVERY): # Mid-attack — advance frame counter
             self._update_attack(inp)
         elif self.status_effects.get("immobilize", 0) > 0:
@@ -88,7 +93,9 @@ class Player:   # Human-controlled fighter entity
             self.state = S_IDLE if self.on_ground else S_JUMPING
         else:                           # Normal control
             self._handle_movement(inp)
-            self._handle_attack_input(inp)
+            self._handle_parry_input(inp)
+            if self.state != S_PARRY:
+                self._handle_attack_input(inp)
 
         physics_step(self)              # Gravity, integrate, ground, walls
         self.hurtbox.sync(self)         # Keep hurtbox glued to body
@@ -158,6 +165,21 @@ class Player:   # Human-controlled fighter entity
                 elif attack_type == "light":
                     self._begin_attack(make_light(direction))
 
+    def _handle_parry_input(self, inp) -> None:
+        if inp.parry and self.on_ground and self.parry_config:
+            self.state = S_PARRY
+            self.parry_frame = 0
+            self.hitbox = None
+            if "shield" in self.animator.frame_map:
+                self.animator.set_state("shield")
+            elif "guard" in self.animator.frame_map:
+                self.animator.set_state("guard")
+            else:
+                self.animator.set_state("hit")
+            self.animator.lock()
+            self.vx *= 0.2
+            logger.log_input(f"{self.name} parry started ({self.parry_config['type']})")
+
     def _begin_attack(self, attack) -> None:   # Transition into attacking state
         # [ID: PLR-010] Initialise attack sequence
         self.state          = S_ATTACK
@@ -212,6 +234,25 @@ class Player:   # Human-controlled fighter entity
             self.state          = S_IDLE
             self.current_attack = None
             self.hitbox         = None
+            self.animator.unlock()
+
+    # ------------------------------------------------------------------ #
+    #  Parry frame logic                                                  #
+    # ------------------------------------------------------------------ #
+    def _update_parry(self, inp) -> None:
+        if not self.parry_config:
+            self.state = S_IDLE
+            self.animator.unlock()
+            return
+            
+        self.parry_frame += 1
+        cfg = self.parry_config
+        total_frames = cfg['startup'] + cfg['active'] + cfg['recovery']
+        
+        self.vx *= 0.8
+        
+        if self.parry_frame >= total_frames:
+            self.state = S_IDLE
             self.animator.unlock()
 
     # ------------------------------------------------------------------ #
@@ -274,6 +315,13 @@ class Player:   # Human-controlled fighter entity
                 self.animator.set_state("attack_heavy")
             else:
                 self.animator.set_state("attack_light")
+        elif self.state == S_PARRY:
+            if "shield" in self.animator.frame_map:
+                self.animator.set_state("shield")
+            elif "guard" in self.animator.frame_map:
+                self.animator.set_state("guard")
+            else:
+                self.animator.set_state("hit")
         elif self.state == S_HIT:
             self.animator.set_state("hit")
         elif self.state == S_DEAD:

@@ -165,6 +165,7 @@ def run(screen: pygame.Surface, clock: pygame.time.Clock) -> tuple:
     
     frame = 0
     vs_timer = 0.0
+    game_mode = "PvE"
 
     # Layout vars
     btn_rect = pygame.Rect(SCREEN_WIDTH - 250, SCREEN_HEIGHT - 120, 200, 60)
@@ -218,6 +219,10 @@ def run(screen: pygame.Surface, clock: pygame.time.Clock) -> tuple:
                     elif state == LOBBY_STATE_P2:
                         state = LOBBY_STATE_VS
                         
+                elif event.key in (pygame.K_m,):
+                    if state == LOBBY_STATE_P1:
+                        game_mode = "PvP" if game_mode == "PvE" else "PvE"
+
                 if state == LOBBY_STATE_P1: p1_idx = active_idx
                 if state == LOBBY_STATE_P2: p2_idx = active_idx
                 hover_idx = active_idx
@@ -236,15 +241,15 @@ def run(screen: pygame.Surface, clock: pygame.time.Clock) -> tuple:
             if vs_timer > 3.0: 
                 break
 
-        _draw(screen, state, frame, bg_surf, hover_idx, p1_idx, p2_idx, btn_rect, btn_hover, previews, icons, font_main, font_sub, font_desc, font_btn, vs_timer)
+        _draw(screen, state, frame, bg_surf, hover_idx, p1_idx, p2_idx, btn_rect, btn_hover, previews, icons, font_main, font_sub, font_desc, font_btn, vs_timer, game_mode)
         pygame.display.flip()
 
     p_config = ROSTER[p1_idx]["factory"](1)
     e_config = ROSTER[p2_idx]["factory"](-1)
-    return p_config, e_config
+    return p_config, e_config, game_mode
 
 
-def _draw(screen, state, frame, bg_surf, hover_idx, p1_idx, p2_idx, btn_rect, btn_hover, previews, icons, font_main, font_sub, font_desc, font_btn, vs_timer):
+def _draw(screen, state, frame, bg_surf, hover_idx, p1_idx, p2_idx, btn_rect, btn_hover, previews, icons, font_main, font_sub, font_desc, font_btn, vs_timer, game_mode):
     # ──── BACKGROUND ────
     if bg_surf:
         screen.blit(bg_surf, (0, 0))
@@ -267,6 +272,10 @@ def _draw(screen, state, frame, bg_surf, hover_idx, p1_idx, p2_idx, btn_rect, bt
     title_col = COLOR_PLAYER if state == LOBBY_STATE_P1 else COLOR_ENEMY
     t_surf = font_main.render(title_text, True, title_col)
     screen.blit(t_surf, (80, 50))
+    
+    if state == LOBBY_STATE_P1:
+        mode_surf = font_sub.render(f"Mode: {game_mode} (Press 'M' to toggle)", True, (200, 200, 200))
+        screen.blit(mode_surf, (80, 110))
     
     # Selection locked checks
     current_pick = p1_idx if state == LOBBY_STATE_P1 else p2_idx

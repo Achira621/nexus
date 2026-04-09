@@ -9,6 +9,39 @@ def resolve_hit(attacker, defender, attack) -> float:  # Apply hit to defender
     if defender.hp <= 0:
         return 0.0   # No damage dealt
 
+    # [ID: DMG-002A] Parry System check
+    if getattr(defender, "state", "") == "parry":
+        p_frame = getattr(defender, "parry_frame", 0)
+        p_cfg = getattr(defender, "parry_config", None)
+        if p_cfg and p_frame >= p_cfg["startup"] and p_frame <= p_cfg["startup"] + p_cfg["active"]:
+            # Successful Parry
+            logger.log_damage(0, getattr(attacker, "name", "?"), getattr(defender, "name", "?") + " (PARRIED!)")
+            
+            # Hit stop to emphasize clash
+            attacker.hit_stop_timer = 25
+            defender.hit_stop_timer = 15
+            
+            # Visual feedback
+            renderer.add_shake(15.0)
+            renderer.spawn_hit_particles(defender.x + defender.width//2, defender.y + defender.height//2, (200, 255, 255))
+            
+            p_type = p_cfg["type"]
+            if p_type == "poison":
+                attacker.apply_status("poison", 180)
+                attacker.apply_status("slow", 60)
+            elif p_type == "perfect":
+                # Instant recovery
+                defender.state = "idle"
+            elif p_type == "dodge":
+                # Evasive roll behind attacker
+                defender.x = attacker.x + (attacker.width + 20) if not attacker.facing_left else attacker.x - defender.width - 20
+                defender.state = "idle"
+            
+            # Briefly stun attacker
+            attacker.enter_hit_stun()
+            attacker.hit_stun_timer = 20  # Override stun
+            return 0.0
+
     # [ID: DMG-003] Deterministic damage — no RNG, skill-based per design rules
     dmg = float(attack.damage)   # Exact value from attack definition
 

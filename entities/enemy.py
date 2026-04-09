@@ -19,6 +19,7 @@ S_ATTACK   = "attack"
 S_RECOVERY = "recovery"
 S_HIT      = "hit"
 S_DEAD     = "dead"
+S_PARRY    = "parry"
 
 
 class Enemy:   # AI-driven fighter — AI writes vx and calls begin_attack()
@@ -42,10 +43,12 @@ class Enemy:   # AI-driven fighter — AI writes vx and calls begin_attack()
         self.max_energy     = 100.0
         self.speed_mult     = config["speed_mult"] if config else 1.0
         self.moveset        = config["attacks"] if config else None
+        self.parry_config   = config.get("parry", None)
         
         self.state          = S_IDLE
         self.current_attack = None
         self.attack_frame   = 0
+        self.parry_frame    = 0
         self.has_hit        = False
         self.hit_stun_timer = 0
         self.hit_stop_timer = 0
@@ -83,6 +86,8 @@ class Enemy:   # AI-driven fighter — AI writes vx and calls begin_attack()
 
         if self.state == S_HIT:
             self._update_stun()
+        elif self.state == S_PARRY:
+            self._update_parry()
         elif self.state in (S_ATTACK, S_RECOVERY):
             self._update_attack()
         elif self.status_effects.get("immobilize", 0) > 0:
@@ -153,6 +158,21 @@ class Enemy:   # AI-driven fighter — AI writes vx and calls begin_attack()
             self.animator.set_state("attack_light")
         self.animator.lock()
 
+    def begin_parry(self) -> None:
+        if self.on_ground and self.parry_config:
+            self.state = S_PARRY
+            self.parry_frame = 0
+            self.hitbox = None
+            if "shield" in self.animator.frame_map:
+                self.animator.set_state("shield")
+            elif "guard" in self.animator.frame_map:
+                self.animator.set_state("guard")
+            else:
+                self.animator.set_state("hit")
+            self.animator.lock()
+            self.vx *= 0.2
+            logger.log_input(f"{self.name} parry started ({self.parry_config['type']})")
+
     # ------------------------------------------------------------------ #
     #  Attack frame logic                                                 #
     # ------------------------------------------------------------------ #
@@ -184,6 +204,25 @@ class Enemy:   # AI-driven fighter — AI writes vx and calls begin_attack()
             self.state          = S_IDLE
             self.current_attack = None
             self.hitbox         = None
+            self.animator.unlock()
+
+    # ------------------------------------------------------------------ #
+    #  Parry frame logic                                                  #
+    # ------------------------------------------------------------------ #
+    def _update_parry(self) -> None:
+        if not self.parry_config:
+            self.state = S_IDLE
+            self.animator.unlock()
+            return
+            
+        self.parry_frame += 1
+        cfg = self.parry_config
+        total_frames = cfg['startup'] + cfg['active'] + cfg['recovery']
+        
+        self.vx *= 0.8
+        
+        if self.parry_frame >= total_frames:
+            self.state = S_IDLE
             self.animator.unlock()
 
     # ------------------------------------------------------------------ #
@@ -243,6 +282,13 @@ class Enemy:   # AI-driven fighter — AI writes vx and calls begin_attack()
                 self.animator.set_state("attack_heavy")
             else:                                          # Last resort — light
                 self.animator.set_state("attack_light")
+        elif self.state == S_PARRY:
+            if "shield" in self.animator.frame_map:
+                self.animator.set_state("shield")
+            elif "guard" in self.animator.frame_map:
+                self.animator.set_state("guard")
+            else:
+                self.animator.set_state("hit")
         elif self.state == S_HIT:
             self.animator.set_state("hit")
         elif self.state == S_DEAD:

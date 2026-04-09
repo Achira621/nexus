@@ -17,10 +17,16 @@ def get_vajra_kali(direction: int = 1) -> dict:
         "sprite_id": "vajra_kali",
         "hp": float(PLAYER_HP),
         "speed_mult": 1.1,      # Slightly faster
+        "parry": {
+            "startup": 3,
+            "active": 6,
+            "recovery": 10,
+            "type": "fast"
+        },
         "attacks": {
             "light": Attack(    # Agni Strike: Fast flame attack with burn
-                damage=LIGHT_DAMAGE, startup=LIGHT_STARTUP - 1, active=LIGHT_ACTIVE,
-                recovery=LIGHT_RECOVERY, knockback=LIGHT_KNOCKBACK, direction=direction,
+                damage=LIGHT_DAMAGE, startup=LIGHT_STARTUP - 3, active=LIGHT_ACTIVE,
+                recovery=LIGHT_RECOVERY - 4, knockback=LIGHT_KNOCKBACK, direction=direction,
                 attack_type="light", hitbox_range=LIGHT_RANGE,
                 status_effect="burn", status_duration=90
             ),
@@ -49,10 +55,16 @@ def get_takshaka(direction: int = 1) -> dict:
         "sprite_id": "takshaka",
         "hp": float(PLAYER_HP),
         "speed_mult": 0.9,      # Slightly slower, calculated
+        "parry": {
+            "startup": 8,
+            "active": 12,
+            "recovery": 20,
+            "type": "poison"
+        },
         "attacks": {
             "light": Attack(    # Dark Strike: Basic poke
-                damage=LIGHT_DAMAGE - 2, startup=LIGHT_STARTUP, active=LIGHT_ACTIVE,
-                recovery=LIGHT_RECOVERY, knockback=LIGHT_KNOCKBACK, direction=direction,
+                damage=LIGHT_DAMAGE - 2, startup=LIGHT_STARTUP + 2, active=LIGHT_ACTIVE,
+                recovery=LIGHT_RECOVERY + 2, knockback=LIGHT_KNOCKBACK, direction=direction,
                 attack_type="light", hitbox_range=LIGHT_RANGE
             ),
             "heavy": Attack(    # Coil Guard: Control tool, immobilizes briefly
@@ -83,6 +95,12 @@ def get_rudra_shiva(direction: int = 1) -> dict:
         "sprite_id": "rudra_shiva",
         "hp": float(PLAYER_HP) + 15,
         "speed_mult": 1.0,      # Balanced speeed
+        "parry": {
+            "startup": 2,
+            "active": 3,
+            "recovery": 15,
+            "type": "perfect"
+        },
         "attacks": {
             "light": Attack(    # Trishul Poke
                 damage=LIGHT_DAMAGE, startup=LIGHT_STARTUP, active=LIGHT_ACTIVE,
@@ -114,6 +132,12 @@ def get_vajra_garuda(direction: int = 1) -> dict:
         "sprite_id": "vajra_garuda",
         "hp": float(PLAYER_HP) - 10,
         "speed_mult": 1.3,      # Very fast
+        "parry": {
+            "startup": 4,
+            "active": 8,
+            "recovery": 12,
+            "type": "dodge"
+        },
         "attacks": {
             "light": Attack(    # Talon Slash
                 damage=LIGHT_DAMAGE - 1, startup=LIGHT_STARTUP - 1, active=LIGHT_ACTIVE,

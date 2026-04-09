@@ -652,6 +652,7 @@ def main() -> None:
     game_state = GS_LOBBY    # Start at character select
     debug_mode = DEBUG_MODE
     game_over  = False
+    is_paused  = False
     winner     = ""
     player: "Player | None" = None
     enemy:  "Enemy  | None" = None
@@ -667,7 +668,7 @@ def main() -> None:
         # ============================================================ #
         if game_state == GS_LOBBY:
             # [ID: MAIN-LOBBY] Blocking call — returns when player confirms
-            p_config, e_config = run_lobby(screen, clock)
+            p_config, e_config, game_mode = run_lobby(screen, clock)
             game_state = GS_LOADING   # Move to loading animation
 
         # ============================================================ #
@@ -678,11 +679,21 @@ def main() -> None:
             # (avoids stutter mid-playback)
             asset_loader.clear()     # Reset cache for fresh round
             p_frames, e_frames = _load_assets(p_config, e_config)
+            
             player = Player(p_frames, p_config)
-            enemy  = Enemy(e_frames, e_config)
-            enemy_ai.reset()
+            if game_mode == "PvP":
+                from utils.constants import ENEMY_START_X, ENEMY_START_Y
+                enemy = Player(e_frames, e_config)
+                enemy.x = ENEMY_START_X
+                enemy.y = ENEMY_START_Y
+                enemy.facing_left = True
+            else:
+                enemy  = Enemy(e_frames, e_config)
+                enemy_ai.reset()
             game_over  = False
+            is_paused  = False
             winner     = ""
+            round_timer = 0.0
 
             # Play the video intro
             _run_loading(screen, clock)
@@ -728,15 +739,25 @@ def main() -> None:
 
             # ── Win condition check ──
             if game_over:
-                if inp.pause:
-                    pygame.quit(); sys.exit()
                 keys = pygame.key.get_pressed()
                 if keys[pygame.K_r]:
                     # [ID: MAIN-016] R → back to lobby for fresh round
                     game_state = GS_LOBBY
+                if keys[pygame.K_ESCAPE]:
+                    pygame.quit(); sys.exit()
                 renderer.draw(screen, player, enemy, dt, debug_mode)
                 renderer.draw_result(screen, winner)
                 pygame.display.flip()
+                input_handler.cleanup_frame()
+                continue
+
+            if inp.pause:
+                is_paused = not is_paused
+                
+            if is_paused:
+                renderer.draw_pause_menu(screen)
+                pygame.display.flip()
+                input_handler.cleanup_frame()
                 continue
 
             # ── AI ──
@@ -747,13 +768,20 @@ def main() -> None:
                 if round_timer < 3.0:
                     renderer.draw_round_intro(screen, round_timer)
                 pygame.display.flip()
+                input_handler.cleanup_frame()
                 continue
 
-            enemy_ai.update(enemy, player, dt)
-
+            # ── AI or Player 2 Input ──
+            if game_mode == "PvE":
+                enemy_ai.update(enemy, player, dt)
+                
             # ── Entity updates ──
             player.update(inp, dt)
-            enemy.update(dt)
+            if game_mode == "PvE":
+                enemy.update(dt)
+            else:
+                inp2 = input_handler.poll(2)
+                enemy.update(inp2, dt)
 
             # ── VFX Trails ──
             if player.state == "attack" and player.hitbox and getattr(player.hitbox, 'active', True):
@@ -780,6 +808,7 @@ def main() -> None:
             if round_timer < 3.0:
                 renderer.draw_round_intro(screen, round_timer)
             pygame.display.flip()
+            input_handler.cleanup_frame()
 
         # ============================================================ #
         #  RESULT — win/loss overlay                                   #
@@ -805,6 +834,7 @@ def main() -> None:
             renderer.draw(screen, player, enemy, dt, debug_mode)
             renderer.draw_result(screen, winner)
             pygame.display.flip()
+            input_handler.cleanup_frame()
 
 
 # [ID: MAIN-022] Standard Python entry-point guard
