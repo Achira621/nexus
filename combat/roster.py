@@ -79,7 +79,7 @@ def get_takshaka(direction: int = 1) -> dict:
 # [ID: RST-004] Rudra-Shiva — The Ascendant (Balanced, High Damage)
 def get_rudra_shiva(direction: int = 1) -> dict:
     return {
-        "name": "Rudra-Shiva",
+        "name": "Shinobi",
         "sprite_id": "rudra_shiva",
         "hp": float(PLAYER_HP) + 15,
         "speed_mult": 1.0,      # Balanced speeed
@@ -110,7 +110,7 @@ def get_rudra_shiva(direction: int = 1) -> dict:
 # [ID: RST-005] Vajra-Garuda — The Sky Warden (High Mobility, Air)
 def get_vajra_garuda(direction: int = 1) -> dict:
     return {
-        "name": "Vajra-Garuda",
+        "name": "Samurai",
         "sprite_id": "vajra_garuda",
         "hp": float(PLAYER_HP) - 10,
         "speed_mult": 1.3,      # Very fast

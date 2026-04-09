@@ -98,24 +98,56 @@ def find_sheet(folder: str) -> "str | None":
     return None                                        # No sheet found
     
 
-def load_spritesheet_data(sheet_path: str, data_dict: dict) -> dict:
-    # [ID: AST-006] Chop sheet into mapping of {state: [frame, frame]}
-    # Expected data_dict: { "idle": [{"x":0, "y":0, "w":32, "h":32}, ...], ... }
-    result = {}
-    if not os.path.exists(sheet_path):
-        return result
-        
-    sheet = load(sheet_path)
-    for state, rect_data_list in data_dict.items():
-        frames = []
-        for rc in rect_data_list:
-            rect = pygame.Rect(rc["x"], rc["y"], rc["w"], rc["h"])
-            frame = pygame.Surface(rect.size, pygame.SRCALPHA).convert_alpha()
-            frame.blit(sheet, (0, 0), rect)
-            frames.append(frame)
-        result[state] = frames
-        
     return result
+
+
+def load_auto_slice(path: str) -> list:
+    # [ID: AST-007] Dynamically extract frames from a transparent 1D strip
+    # Uses mask connectivity to find bounding boxes of discrete characters
+    if not os.path.exists(path):
+        return []
+
+    sheet = load(path)
+    mask = pygame.mask.from_surface(sheet)
+    
+    # Get all bounding rects of connected non-transparent components
+    rects = mask.get_bounding_rects()
+    if not rects:
+        return []
+
+    # Filter out tiny specks of noise (less than 8x8 pixels)
+    rects = [r for r in rects if r.width > 8 and r.height > 8]
+    
+    # For a 1D strip, we group rects that are vertically overlapping or horizontally close
+    # This ensures a character holding a separate weapon is treated as one frame
+    if not rects:
+        return []
+    
+    rects.sort(key=lambda r: r.x)
+    
+    merged = []
+    if rects:
+        curr = rects[0]
+        for i in range(1, len(rects)):
+            nxt = rects[i]
+            # If the next rect is very close or overlaps in X, merge them
+            # We assume frames are separated by at least 20-30 pixels
+            gap = nxt.x - (curr.x + curr.width)
+            if gap < 25: # Merge threshold
+                curr = curr.union(nxt)
+            else:
+                merged.append(curr)
+                curr = nxt
+        merged.append(curr)
+
+    frames = []
+    for r in merged:
+        # Create a surface for the sprite and blit it
+        frame = pygame.Surface(r.size, pygame.SRCALPHA).convert_alpha()
+        frame.blit(sheet, (0, 0), r)
+        frames.append(frame)
+        
+    return frames
 
 
 def clear() -> None:  # Clear entire cache (e.g. on scene reload)

@@ -55,8 +55,19 @@ class Animator:   # Per-entity animation controller
 
     def update(self, dt: float) -> None:   # Advance animation by dt seconds
         frames = self.frame_map.get(self.state, [])  # Current frame list
-        if not frames:                               # Nothing to animate
+        if not frames:
+            fallback = self.frame_map.get("idle", [])
+            if not fallback:
+                for val in self.frame_map.values():
+                    if val:
+                        frames = val
+                        break
+            else:
+                frames = fallback
+                
+        if not frames:                               # Nothing to animate natively
             return
+            
         total = len(frames)                          # Frame count
         # [ID: ANM-005] Accumulate time and decide current frame index
         self._elapsed += dt

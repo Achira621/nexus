@@ -36,7 +36,7 @@ ROSTER = [
         "skills":  ["Coil Guard (Root)", "Serpent Dominion (Slow)"]
     },
     {
-        "name":    "Rudra-Shiva",
+        "name":    "Shinobi",
         "factory": get_rudra_shiva,
         "color":   (130, 80, 255),
         "role":    "Balanced",
@@ -44,7 +44,7 @@ ROSTER = [
         "skills":  ["Trishul Cleave", "Tandava Focus"]
     },
     {
-        "name":    "Vajra-Garuda",
+        "name":    "Samurai",
         "factory": get_vajra_garuda,
         "color":   (255, 200, 50),
         "role":    "Mobility",
@@ -82,6 +82,10 @@ def load_preview_anim(sprite_id: str) -> list:
     elif sprite_id == "takshaka":
         if sheet_path:
              frames = asset_loader.load_spritesheet_grid(sheet_path, 6, 4)[:6]
+    elif sprite_id in ("rudra_shiva", "vajra_garuda"):
+        idle_path = os.path.join(folder, "Idle.png")
+        if os.path.exists(idle_path):
+            frames = asset_loader.load_spritesheet_grid(idle_path, 6, 1)
     else:
         if sheet_path:
             # Most default character idle loops are first 6 frames
@@ -99,8 +103,6 @@ def load_preview_anim(sprite_id: str) -> list:
             trimmed = pygame.Surface(alpha_rect.size, pygame.SRCALPHA)
             trimmed.blit(f, (0, 0), alpha_rect)
             scaled.append(pygame.transform.smoothscale(trimmed, (w, h)))
-        else:
-            scaled.append(pygame.transform.smoothscale(f, (w, h)))
             
     # Absolute fallback (draw colored box) if it fails
     if not scaled:

@@ -196,10 +196,24 @@ def _load_box_sheet(path: str, boxes_path: str,
             frame.blit(raw, (0, 0), rect)
             frames.append(_scale_frame(frame, target_w, target_h))
 
-        logger.log_asset(f"[BOX] {os.path.basename(path)} â†’ {len(frames)} frames")
+        logger.log_asset(f"[BOX] {os.path.basename(path)} -> {len(frames)} frames")
         return frames
     except Exception as exc:
-        logger.log_asset(f"[BOX] WARN: {path} failed â€” {exc}")
+        logger.log_asset(f"[BOX] WARN: {path} failed -> {exc}")
+        return []
+
+
+def _load_auto_sheet(path: str, target_w: int, target_h: int) -> list:
+    # [ID: MAIN-AUTO] Load 1D strip sheet using alpha-mask auto-detection.
+    if not os.path.exists(path):
+        return []
+    try:
+        frames = asset_loader.load_auto_slice(path)
+        scaled = [_scale_frame(frame, target_w, target_h) for frame in frames]
+        logger.log_asset(f"[AUTO] {os.path.basename(path)} -> {len(scaled)} frames")
+        return scaled
+    except Exception as exc:
+        logger.log_asset(f"[AUTO] WARN: {path} failed -> {exc}")
         return []
 
 
@@ -352,6 +366,8 @@ def _try_load_sprites(folder: str, states: list, w: int, h: int,
         scaled     = [_scale_frame(frame, w, h) for frame in all_frames]
         for state, (row, sc, fc) in anim_map.items():
             sliced = _slice_frames(scaled, cols, row, sc, fc)
+            # Automatically wipe invalid/missing frames so engine loops tightly
+            sliced = [f for f in sliced if f.get_bounding_rect().width > 0]
             if sliced:
                 frame_map[state] = sliced
                 logger.log_asset(f"  {sprite_id}.{state} → {len(sliced)} frames")
@@ -360,14 +376,19 @@ def _try_load_sprites(folder: str, states: list, w: int, h: int,
         logger.log_asset(f"[WARN] No SHEET_CONFIG for {sprite_id}, using generic 6×6")
         all_frames = asset_loader.load_spritesheet_grid(sheet_path, 6, 6)
         scaled     = [_scale_frame(frame, w, h) for frame in all_frames]
-        frame_map["idle"]               = scaled[0:6]
-        frame_map["walk"]               = scaled[6:12]
-        frame_map["attack_light"]       = scaled[12:18]
-        frame_map["attack_heavy"]       = scaled[18:24]
-        frame_map["hit"]                = scaled[24:27]
-        frame_map["dead"]               = scaled[27:30]
-        frame_map["attack_directional"] = frame_map["attack_heavy"]
-        frame_map["attack_special"]     = frame_map["attack_heavy"]
+        # Strip explicitly from generic fallback arrays
+        frame_map["idle"]               = [f for f in scaled[0:6] if f.get_bounding_rect().width > 0]
+        frame_map["walk"]               = [f for f in scaled[6:12] if f.get_bounding_rect().width > 0]
+        frame_map["attack_light"]       = [f for f in scaled[12:18] if f.get_bounding_rect().width > 0]
+        frame_map["attack_heavy"]       = [f for f in scaled[18:24] if f.get_bounding_rect().width > 0]
+        frame_map["hit"]                = [f for f in scaled[24:27] if f.get_bounding_rect().width > 0]
+        frame_map["dead"]               = [f for f in scaled[27:30] if f.get_bounding_rect().width > 0]
+        
+        # Clean empty lists just in case
+        frame_map = {k: v for k, v in frame_map.items() if v}
+        
+        frame_map["attack_directional"] = frame_map.get("attack_heavy", frame_map.get("attack_light", []))
+        frame_map["attack_special"]     = frame_map.get("attack_heavy", frame_map.get("attack_light", []))
     else:
         logger.log_asset(f"[WARN] No sheet found in {folder}, trying sequences")
         for state in states:
@@ -419,6 +440,28 @@ def _try_load_sprites(folder: str, states: list, w: int, h: int,
             frame_map["attack_directional"] = attack_seq
             frame_map["attack_special"] = attack_seq
             logger.log_asset(f"  takshaka.attack → {len(attack_seq)} frames [BOX]")
+
+    if sprite_id == "rudra_shiva":
+        frame_map["idle"] = _load_strip(os.path.join(folder, "Idle.png"), w, h)
+        frame_map["walk"] = _load_strip(os.path.join(folder, "Walk.png"), w, h)
+        frame_map["run"] = _load_strip(os.path.join(folder, "Run.png"), w, h)
+        frame_map["attack_light"] = _load_strip(os.path.join(folder, "Attack_1.png"), w, h)
+        frame_map["attack_heavy"] = _load_strip(os.path.join(folder, "Attack_2.png"), w, h)
+        frame_map["attack_directional"] = _load_strip(os.path.join(folder, "Attack_3.png"), w, h)
+        frame_map["attack_special"] = _load_strip(os.path.join(folder, "Attack_3.png"), w, h)
+        frame_map["hit"] = _load_strip(os.path.join(folder, "Hurt.png"), w, h)
+        frame_map["dead"] = _load_strip(os.path.join(folder, "Dead.png"), w, h)
+
+    if sprite_id == "vajra_garuda":
+        frame_map["idle"] = _load_strip(os.path.join(folder, "Idle.png"), w, h)
+        frame_map["walk"] = _load_strip(os.path.join(folder, "Walk.png"), w, h)
+        frame_map["run"] = _load_strip(os.path.join(folder, "Run.png"), w, h)
+        frame_map["attack_light"] = _load_strip(os.path.join(folder, "Attack_1.png"), w, h)
+        frame_map["attack_heavy"] = _load_strip(os.path.join(folder, "Attack_2.png"), w, h)
+        frame_map["attack_directional"] = _load_strip(os.path.join(folder, "Attack_3.png"), w, h)
+        frame_map["attack_special"] = _load_strip(os.path.join(folder, "Attack_3.png"), w, h)
+        frame_map["hit"] = _load_strip(os.path.join(folder, "Hurt.png"), w, h)
+        frame_map["dead"] = _load_strip(os.path.join(folder, "Dead.png"), w, h)
 
     return frame_map
 
